@@ -69,6 +69,11 @@ func (ds *Diagnostics) Add(severity Severity, message string) {
 	})
 }
 
+// AddAll adds all given diagnostics to the diagnostics list.
+func (ds *Diagnostics) AddAll(diags Diagnostics) {
+	*ds = append(*ds, diags...)
+}
+
 // Error implements error.
 func (ds Diagnostics) Error() string {
 	var sb strings.Builder

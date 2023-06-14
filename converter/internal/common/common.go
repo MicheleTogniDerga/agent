@@ -24,6 +24,16 @@ func NewBlockWithOverride(name []string, label string, args component.Arguments)
 	return block
 }
 
+// NewBlockWithOverrideFn generates a new [*builder.Block] using a hook fn to
+// override specific types.
+func NewBlockWithOverrideFn(name []string, label string, args component.Arguments, fn builder.ValueOverrideHook) *builder.Block {
+	block := builder.NewBlock(name, label)
+	block.Body().SetValueOverrideHook(fn)
+	block.Body().AppendFrom(args)
+	block.Body().SetValueOverrideHook(nil)
+	return block
+}
+
 // GetValueOverrideHook returns a hook for overriding the go value of
 // specific go types for converting configs from one type to another.
 func getValueOverrideHook() builder.ValueOverrideHook {

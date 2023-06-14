@@ -19,7 +19,7 @@ func appendDiscoveryConsul(pb *prometheusBlocks, label string, sdConfig *prom_co
 }
 
 func validateDiscoveryConsul(sdConfig *prom_consul.SDConfig) diag.Diagnostics {
-	return validateHttpClientConfig(&sdConfig.HTTPClientConfig)
+	return ValidateHttpClientConfig(&sdConfig.HTTPClientConfig)
 }
 
 func toDiscoveryConsul(sdConfig *prom_consul.SDConfig) *consul.Arguments {
@@ -42,6 +42,6 @@ func toDiscoveryConsul(sdConfig *prom_consul.SDConfig) *consul.Arguments {
 		ServiceTags:      sdConfig.ServiceTags,
 		NodeMeta:         sdConfig.NodeMeta,
 		RefreshInterval:  time.Duration(sdConfig.RefreshInterval),
-		HTTPClientConfig: *toHttpClientConfig(&sdConfig.HTTPClientConfig),
+		HTTPClientConfig: *ToHttpClientConfig(&sdConfig.HTTPClientConfig),
 	}
 }

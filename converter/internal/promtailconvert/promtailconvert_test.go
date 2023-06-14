@@ -1,14 +1,15 @@
-package prometheusconvert_test
+package promtailconvert_test
 
 import (
 	"bytes"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/grafana/agent/converter/internal/prometheusconvert"
+	"github.com/grafana/agent/converter/internal/promtailconvert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,7 +34,7 @@ func TestConvert(t *testing.T) {
 			caseName = strings.TrimSuffix(caseName, promSuffix)
 
 			t.Run(caseName, func(t *testing.T) {
-				actual, diags := prometheusconvert.Convert(inputBytes)
+				actual, diags := promtailconvert.Convert(inputBytes)
 
 				expectedErrors := parseErrors(t, path)
 				for ix, diag := range diags {
@@ -53,6 +54,9 @@ func TestConvert(t *testing.T) {
 				if _, err := os.Stat(outputFile); err == nil {
 					outputBytes, err := os.ReadFile(outputFile)
 					require.NoError(t, err)
+					fmt.Println("============== ACTUAL =============")
+					fmt.Println(string(normalizeLineEndings(actual)))
+					fmt.Println("===================================")
 					require.Equal(t, string(normalizeLineEndings(outputBytes)), string(normalizeLineEndings(actual)))
 				}
 			})
