@@ -44,7 +44,9 @@ func NewScrapeConfigBuilder(
 	diags *diag.Diagnostics,
 	cfg *scrapeconfig.Config,
 	globalCtx *GlobalContext,
+
 ) *ScrapeConfigBuilder {
+
 	return &ScrapeConfigBuilder{
 		f:         f,
 		diags:     diags,
@@ -285,7 +287,6 @@ func (s *ScrapeConfigBuilder) AppendLokiSourceFile() {
 		args,
 		overrideHook,
 	))
-
 }
 
 func convertPromLabels(labels model.LabelSet) map[string]string {

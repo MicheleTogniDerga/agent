@@ -186,6 +186,7 @@ func appendScrapeConfig(
 	diags *diag.Diagnostics,
 	gctx *build.GlobalContext,
 ) {
+
 	b := build.NewScrapeConfigBuilder(f, diags, cfg, gctx)
 
 	// Append all the SD components
@@ -201,9 +202,9 @@ func appendScrapeConfig(
 	// Append all the components that produce logs directly.
 	// If any relabelling is required, it will be done via a loki.relabel component.
 	// The logs are sent to loki.process if processing is needed, or directly to loki.write components.
+	//TODO(thampiotr): add support for other integrations
 	b.AppendCloudFlareConfig()
 	b.AppendJournalConfig()
-	//TODO(thampiotr): add support for integrations
 }
 
 func appendLokiWrite(f *builder.File, client *client.Config, diags *diag.Diagnostics, index int) loki.LogsReceiver {
