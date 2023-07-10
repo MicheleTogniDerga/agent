@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+
 	"github.com/alecthomas/units"
 	"github.com/grafana/agent/component/common/loki"
 	lokiwrite "github.com/grafana/agent/component/loki/write"

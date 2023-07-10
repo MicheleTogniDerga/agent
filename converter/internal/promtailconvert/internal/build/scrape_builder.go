@@ -2,6 +2,9 @@ package build
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/grafana/agent/component/common/loki"
 	flowrelabel "github.com/grafana/agent/component/common/relabel"
 	"github.com/grafana/agent/component/discovery"
@@ -20,8 +23,6 @@ import (
 	"github.com/grafana/agent/pkg/river/token/builder"
 	"github.com/grafana/loki/clients/pkg/promtail/scrapeconfig"
 	"github.com/prometheus/common/model"
-	"strings"
-	"time"
 )
 
 type ScrapeConfigBuilder struct {

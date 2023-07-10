@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+
 	"github.com/grafana/agent/component/loki/process/stages"
 	"github.com/grafana/agent/converter/diag"
 	promtailstages "github.com/grafana/loki/clients/pkg/logentry/stages"

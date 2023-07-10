@@ -1,8 +1,9 @@
 package build
 
 import (
-	"github.com/grafana/agent/component/common/loki"
 	"time"
+
+	"github.com/grafana/agent/component/common/loki"
 )
 
 type GlobalContext struct {
