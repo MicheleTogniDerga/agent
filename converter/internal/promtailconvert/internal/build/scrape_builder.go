@@ -86,54 +86,6 @@ func (s *ScrapeConfigBuilder) AppendCloudFlareConfig() {
 	))
 }
 
-func (s *ScrapeConfigBuilder) getOrNewDiscoveryRelabelRules() string {
-	s.appendDiscoveryRelabel()
-	return s.discoveryRelabelRulesExpr
-}
-
-func (s *ScrapeConfigBuilder) getOrNewLokiRelabel() string {
-	if len(s.cfg.RelabelConfigs) == 0 {
-		// If no relabels - we can send straight to the process stage.
-		return logsReceiversToExpr(s.getOrNewProcessStageReceivers())
-	}
-
-	if s.lokiRelabelReceiverExpr == "" {
-		args := lokirelabel.Arguments{
-			ForwardTo:      s.getOrNewProcessStageReceivers(),
-			RelabelConfigs: prometheusconvert.ToFlowRelabelConfigs(s.cfg.RelabelConfigs),
-		}
-		s.f.Body().AppendBlock(common.NewBlockWithOverride([]string{"loki", "relabel"}, s.cfg.JobName, args))
-		s.lokiRelabelReceiverExpr = "loki.relabel." + s.cfg.JobName + ".receiver"
-	}
-	return s.lokiRelabelReceiverExpr
-}
-
-func (s *ScrapeConfigBuilder) getOrNewProcessStageReceivers() []loki.LogsReceiver {
-	if s.processStageReceivers != nil {
-		return s.processStageReceivers
-	}
-	if len(s.cfg.PipelineStages) == 0 {
-		s.processStageReceivers = s.globalCtx.WriteReceivers
-		return s.processStageReceivers
-	}
-
-	flowStages := make([]stages.StageConfig, len(s.cfg.PipelineStages))
-	for i, ps := range s.cfg.PipelineStages {
-		if fs, ok := convertStage(ps, s.diags); ok {
-			flowStages[i] = fs
-		}
-	}
-	args := process.Arguments{
-		ForwardTo: s.globalCtx.WriteReceivers,
-		Stages:    flowStages,
-	}
-	s.f.Body().AppendBlock(common.NewBlockWithOverride([]string{"loki", "process"}, s.cfg.JobName, args))
-	s.processStageReceivers = []loki.LogsReceiver{common.ConvertLogsReceiver{
-		Expr: fmt.Sprintf("loki.process.%s.receiver", s.cfg.JobName),
-	}}
-	return s.processStageReceivers
-}
-
 func (s *ScrapeConfigBuilder) AppendJournalConfig() {
 	jc := s.cfg.JournalConfig
 	if jc == nil {
@@ -188,6 +140,77 @@ func (s *ScrapeConfigBuilder) AppendKubernetesSDs() {
 	}
 }
 
+func (s *ScrapeConfigBuilder) AppendLokiSourceFile() {
+	// If there were no targets expressions collected, that means
+	// we didn't have any components that produced SD targets, so
+	// we can skip this component.
+	if len(s.allTargetsExps) == 0 {
+		return
+	}
+	targets := s.getExpandedFileTargetsExpr()
+	forwardTo := s.getOrNewProcessStageReceivers()
+
+	args := lokisourcefile.Arguments{
+		ForwardTo: forwardTo,
+	}
+	overrideHook := func(val interface{}) interface{} {
+		if _, ok := val.([]discovery.Target); ok {
+			return common.CustomTokenizer{Expr: targets}
+		}
+		return val
+	}
+
+	s.f.Body().AppendBlock(common.NewBlockWithOverrideFn(
+		[]string{"loki", "source", "file"},
+		s.cfg.JobName,
+		args,
+		overrideHook,
+	))
+}
+
+func (s *ScrapeConfigBuilder) getOrNewLokiRelabel() string {
+	if len(s.cfg.RelabelConfigs) == 0 {
+		// If no relabels - we can send straight to the process stage.
+		return logsReceiversToExpr(s.getOrNewProcessStageReceivers())
+	}
+
+	if s.lokiRelabelReceiverExpr == "" {
+		args := lokirelabel.Arguments{
+			ForwardTo:      s.getOrNewProcessStageReceivers(),
+			RelabelConfigs: prometheusconvert.ToFlowRelabelConfigs(s.cfg.RelabelConfigs),
+		}
+		s.f.Body().AppendBlock(common.NewBlockWithOverride([]string{"loki", "relabel"}, s.cfg.JobName, args))
+		s.lokiRelabelReceiverExpr = "loki.relabel." + s.cfg.JobName + ".receiver"
+	}
+	return s.lokiRelabelReceiverExpr
+}
+
+func (s *ScrapeConfigBuilder) getOrNewProcessStageReceivers() []loki.LogsReceiver {
+	if s.processStageReceivers != nil {
+		return s.processStageReceivers
+	}
+	if len(s.cfg.PipelineStages) == 0 {
+		s.processStageReceivers = s.globalCtx.WriteReceivers
+		return s.processStageReceivers
+	}
+
+	flowStages := make([]stages.StageConfig, len(s.cfg.PipelineStages))
+	for i, ps := range s.cfg.PipelineStages {
+		if fs, ok := convertStage(ps, s.diags); ok {
+			flowStages[i] = fs
+		}
+	}
+	args := process.Arguments{
+		ForwardTo: s.globalCtx.WriteReceivers,
+		Stages:    flowStages,
+	}
+	s.f.Body().AppendBlock(common.NewBlockWithOverride([]string{"loki", "process"}, s.cfg.JobName, args))
+	s.processStageReceivers = []loki.LogsReceiver{common.ConvertLogsReceiver{
+		Expr: fmt.Sprintf("loki.process.%s.receiver", s.cfg.JobName),
+	}}
+	return s.processStageReceivers
+}
+
 func (s *ScrapeConfigBuilder) appendDiscoveryRelabel() {
 	if s.allRelabeledTargetsExpr != "" {
 		return
@@ -221,10 +244,13 @@ func (s *ScrapeConfigBuilder) appendDiscoveryRelabel() {
 }
 
 func (s *ScrapeConfigBuilder) getAllRelabeledTargetsExpr() string {
-	if s.allRelabeledTargetsExpr == "" {
-		s.appendDiscoveryRelabel()
-	}
+	s.appendDiscoveryRelabel()
 	return s.allRelabeledTargetsExpr
+}
+
+func (s *ScrapeConfigBuilder) getOrNewDiscoveryRelabelRules() string {
+	s.appendDiscoveryRelabel()
+	return s.discoveryRelabelRulesExpr
 }
 
 func (s *ScrapeConfigBuilder) getExpandedFileTargetsExpr() string {
@@ -259,34 +285,6 @@ func (s *ScrapeConfigBuilder) getAllTargetsJoinedExpr() string {
 		targetsExpr = fmt.Sprintf("concat(%s)", strings.Join(s.allTargetsExps, ", "))
 	}
 	return targetsExpr
-}
-
-func (s *ScrapeConfigBuilder) AppendLokiSourceFile() {
-	// If there were no targets expressions collected, that means
-	// we didn't have any components that produced SD targets, so
-	// we can skip this component.
-	if len(s.allTargetsExps) == 0 {
-		return
-	}
-	targets := s.getExpandedFileTargetsExpr()
-	forwardTo := s.getOrNewProcessStageReceivers()
-
-	args := lokisourcefile.Arguments{
-		ForwardTo: forwardTo,
-	}
-	overrideHook := func(val interface{}) interface{} {
-		if _, ok := val.([]discovery.Target); ok {
-			return common.CustomTokenizer{Expr: targets}
-		}
-		return val
-	}
-
-	s.f.Body().AppendBlock(common.NewBlockWithOverrideFn(
-		[]string{"loki", "source", "file"},
-		s.cfg.JobName,
-		args,
-		overrideHook,
-	))
 }
 
 func convertPromLabels(labels model.LabelSet) map[string]string {
